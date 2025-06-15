@@ -14,7 +14,9 @@ interface Props {
 
 async function getPost(slug: string): Promise<PostType | null> {
   await connectDB();
-  const post = await PostModel.findOne({ slug }).populate('author', 'name email');
+  const post = await PostModel.findOne({ slug })
+    .populate('author', 'name email')
+    .populate('comments.author', 'name email');
   
   if (!post) return null;
 

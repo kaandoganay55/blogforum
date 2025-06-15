@@ -22,6 +22,29 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'admin'],
     default: 'user',
   },
+  bio: {
+    type: String,
+    maxlength: 500,
+    default: '',
+  },
+  location: {
+    type: String,
+    maxlength: 100,
+    default: '',
+  },
+  website: {
+    type: String,
+    maxlength: 200,
+    default: '',
+  },
+  joinedAt: {
+    type: Date,
+    default: Date.now,
+  },
+  isActive: {
+    type: Boolean,
+    default: true,
+  },
 }, {
   timestamps: true,
 });
