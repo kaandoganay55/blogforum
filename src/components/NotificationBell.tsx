@@ -1,297 +1,276 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { Bell, Check, Clock, Heart, MessageSquare, Star, User, X } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import SpotlightCard from './SpotlightCard';
 
 interface Notification {
   _id: string;
-  type: 'like' | 'comment' | 'follow' | 'mention';
+  userId: string;
+  type: string;
   message: string;
+  read: boolean;
+  createdAt: string;
   sender: {
     _id: string;
     name: string;
-    email: string;
     image?: string;
   };
   post?: {
     _id: string;
-    title: string;
     slug: string;
+    title: string;
   };
-  isRead: boolean;
-  createdAt: string;
 }
 
 export default function NotificationBell() {
   const { data: session } = useSession();
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [markingId, setMarkingId] = useState<string | null>(null);
+  const router = useRouter();
 
-  // Bildirimleri getir
-  const fetchNotifications = async () => {
-    if (!session) return;
-
-    try {
-      setIsLoading(true);
-      const response = await fetch('/api/notifications?limit=10');
-      if (response.ok) {
-        const data = await response.json();
-        setNotifications(data.notifications);
-        setUnreadCount(data.unreadCount);
-      }
-    } catch (error) {
-      console.error('Bildirimler getirilemedi:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // İlk yükleme
   useEffect(() => {
-    if (session) {
+    if (session?.user) {
       fetchNotifications();
-      
-      // Her 30 saniyede bir güncelle
-      const interval = setInterval(fetchNotifications, 30000);
-      return () => clearInterval(interval);
     }
   }, [session]);
 
-  // Click outside handler
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Bildirimi okundu olarak işaretle
-  const markAsRead = async (notificationId: string) => {
+  const fetchNotifications = async () => {
     try {
-      const response = await fetch(`/api/notifications/${notificationId}/read`, {
-        method: 'PUT',
-      });
+      const res = await fetch('/api/notifications');
+      const data = await res.json();
+      const notificationsArray = Array.isArray(data) ? data : data.notifications || [];
+      const mappedNotifications = notificationsArray.map((notification: any) => ({
+        _id: notification._id || '',
+        userId: notification.userId || '',
+        type: notification.type || 'general',
+        message: notification.message || 'Yeni bildirim',
+        read: Boolean(notification.read ?? notification.isRead),
+        createdAt: notification.createdAt || new Date().toISOString(),
+        sender: {
+          _id: notification.sender?._id || '',
+          name: notification.sender?.name || 'Anonim',
+          image: notification.sender?.image || undefined
+        },
+        post: notification.post ? {
+          _id: notification.post._id || '',
+          slug: notification.post.slug || '',
+          title: notification.post.title || ''
+        } : undefined
+      }));
+      setNotifications(mappedNotifications);
+    } catch (error) {
+      console.error('Bildirimler yüklenirken hata oluştu:', error);
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      if (response.ok) {
-        setNotifications(prev => 
-          prev.map(notif => 
-            notif._id === notificationId 
-              ? { ...notif, isRead: true }
-              : notif
-          )
-        );
-        setUnreadCount(prev => Math.max(0, prev - 1));
+  const markAsRead = async (id: string) => {
+    setMarkingId(id);
+    try {
+      await fetch(`/api/notifications/${id}/read`, { method: 'POST' });
+      setNotifications(prevNotifications => 
+        prevNotifications.map(notification => 
+          notification._id === id ? { ...notification, read: true } : notification
+        )
+      );
+    } catch (error) {
+      console.error('Bildirim okundu olarak işaretlenirken hata oluştu:', error);
+    } finally {
+      setMarkingId(null);
+    }
+  };
+
+  const handleNotificationClick = async (notification: Notification) => {
+    await markAsRead(notification._id);
+    setIsOpen(false);
+    if (notification.post && notification.post.slug) {
+      router.push(`/post/${notification.post.slug}`);
+    }
+  };
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'like':
+        return <Heart className="w-4 h-4 text-red-500" />;
+      case 'comment':
+        return <MessageSquare className="w-4 h-4 text-blue-500" />;
+      case 'follow':
+        return <User className="w-4 h-4 text-purple-500" />;
+      case 'mention':
+        return <Star className="w-4 h-4 text-yellow-500" />;
+      default:
+        return <Bell className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return 'Bilinmiyor';
+      }
+      const now = new Date();
+      const diff = now.getTime() - date.getTime();
+      const minutes = Math.floor(diff / 60000);
+      const hours = Math.floor(minutes / 60);
+      const days = Math.floor(hours / 24);
+      if (minutes < 1) {
+        return 'Az önce';
+      } else if (minutes < 60) {
+        return `${minutes} dakika önce`;
+      } else if (hours < 24) {
+        return `${hours} saat önce`;
+      } else if (days < 30) {
+        return `${days} gün önce`;
+      } else {
+        return date.toLocaleDateString('tr-TR', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric'
+        });
       }
     } catch (error) {
-      console.error('Bildirim güncellenemedi:', error);
+      return 'Bilinmiyor';
     }
   };
 
-  // Tüm bildirimleri okundu olarak işaretle
-  const markAllAsRead = async () => {
-    try {
-      const response = await fetch('/api/notifications/read', {
-        method: 'POST',
-      });
-
-      if (response.ok) {
-        setNotifications(prev => 
-          prev.map(notif => ({ ...notif, isRead: true }))
-        );
-        setUnreadCount(0);
-      }
-    } catch (error) {
-      console.error('Bildirimler güncellenemedi:', error);
-    }
-  };
-
-  // Bildirim tipine göre emoji
-  const getNotificationEmoji = (type: string) => {
-    switch (type) {
-      case 'like': return '❤️';
-      case 'comment': return '💬';
-      case 'follow': return '👥';
-      case 'mention': return '📢';
-      default: return '🔔';
-    }
-  };
-
-  // Bildirim tipine göre renk
-  const getNotificationColor = (type: string) => {
-    switch (type) {
-      case 'like': return 'text-pink-600 bg-pink-50';
-      case 'comment': return 'text-blue-600 bg-blue-50';
-      case 'follow': return 'text-green-600 bg-green-50';
-      case 'mention': return 'text-purple-600 bg-purple-50';
-      default: return 'text-gray-600 bg-gray-50';
-    }
-  };
-
-  // Zaman formatı
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (minutes < 1) return 'Şimdi';
-    if (minutes < 60) return `${minutes}dk önce`;
-    if (hours < 24) return `${hours}sa önce`;
-    if (days < 7) return `${days}g önce`;
-    return date.toLocaleDateString('tr-TR');
-  };
-
-  if (!session) return null;
+  const unreadCount = Array.isArray(notifications) ? notifications.filter(n => !n.read).length : 0;
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      {/* Notification Bell */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-gray-600 hover:text-blue-600 transition-colors duration-200 cursor-pointer"
-      >
-        <div className="w-6 h-6 relative">
-          🔔
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" className="relative">
+          <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-pulse">
-              {unreadCount > 9 ? '9+' : unreadCount}
+            <span className="absolute -top-1 -right-1 flex h-5 w-5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-5 w-5 bg-blue-500 text-white text-xs items-center justify-center">
+                {unreadCount}
+              </span>
             </span>
           )}
-        </div>
-      </button>
-
-      {/* Dropdown */}
-      {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-96 glass rounded-2xl card-shadow border border-white/20 py-4 slide-up z-50">
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 pb-4 border-b border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-800">
-              🔔 Bildirimler
-            </h3>
-            {unreadCount > 0 && (
-              <button
-                onClick={markAllAsRead}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
-              >
-                Tümünü okundu işaretle
-              </button>
-            )}
-          </div>
-
-          {/* Notifications List */}
-          <div className="max-h-96 overflow-y-auto">
-            {isLoading ? (
-              <div className="flex justify-center py-8">
-                <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-              </div>
-            ) : notifications.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="text-4xl mb-4">🔕</div>
-                <p className="text-gray-600">Henüz bildirim yok</p>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification._id}
-                    className={`
-                      px-6 py-4 hover:bg-gray-50 transition-colors duration-200 cursor-pointer
-                      ${!notification.isRead ? 'bg-blue-50/50' : ''}
-                    `}
-                    onClick={() => {
-                      if (!notification.isRead) {
-                        markAsRead(notification._id);
-                      }
-                      setIsOpen(false);
-                    }}
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* Avatar */}
-                      <div className="flex-shrink-0">
-                        {notification.sender.image ? (
-                          <img
-                            src={notification.sender.image}
-                            alt={notification.sender.name}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
-                            {notification.sender.name?.charAt(0)?.toUpperCase() || '👤'}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`
-                            w-6 h-6 rounded-full flex items-center justify-center text-sm
-                            ${getNotificationColor(notification.type)}
-                          `}>
-                            {getNotificationEmoji(notification.type)}
-                          </span>
-                          {!notification.isRead && (
-                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                          )}
-                        </div>
-                        
-                        <p className="text-sm text-gray-800 leading-relaxed">
-                          <span className="font-semibold">{notification.sender.name}</span>
-                          {' '}
-                          {notification.message}
-                        </p>
-                        
-                        {notification.post && (
-                          <Link
-                            href={`/post/${notification.post.slug}`}
-                            className="text-xs text-blue-600 hover:text-blue-700 mt-1 block truncate"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            📄 {notification.post.title}
-                          </Link>
-                        )}
-                        
-                        <p className="text-xs text-gray-500 mt-2">
-                          {formatTime(notification.createdAt)}
-                        </p>
-                      </div>
-                    </div>
+        </Button>
+      </SheetTrigger>
+      <SheetContent className="w-full sm:max-w-lg p-0">
+        <SpotlightCard className="h-full rounded-none">
+          <div className="flex flex-col h-full">
+            <SheetHeader className="p-6 border-b border-gray-200 dark:border-gray-800">
+              <SheetTitle className="text-2xl font-bold">Bildirimler</SheetTitle>
+            </SheetHeader>
+            <div className="flex-1 overflow-y-auto p-4">
+              {loading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                </div>
+              ) : notifications.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center p-6">
+                  <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                    <Bell className="w-8 h-8 text-gray-400" />
                   </div>
-                ))}
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    Henüz bildiriminiz yok
+                  </h3>
+                  <p className="text-gray-500 dark:text-gray-400">
+                    Yeni bildirimleriniz burada görünecek
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {notifications.map((notification) => (
+                    <div
+                      key={notification._id}
+                      className={`group transition-all duration-200 ${notification.read ? 'opacity-75' : 'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/10'} ${markingId === notification._id ? 'opacity-50 pointer-events-none' : ''}`}
+                      onClick={() => handleNotificationClick(notification)}
+                    >
+                      <SpotlightCard>
+                        <div className="p-4 flex items-start gap-4">
+                          <Avatar className="h-10 w-10 border-2 border-gray-200 dark:border-gray-700">
+                            <AvatarImage src={notification.sender.image} />
+                            <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+                              {notification.sender.name.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-gray-900 dark:text-white">
+                                  {notification.sender.name}
+                                </span>
+                                <div className="flex items-center">
+                                  {getNotificationIcon(notification.type)}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                  {formatDate(notification.createdAt)}
+                                </span>
+                                {!notification.read && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                                    onClick={e => { e.stopPropagation(); markAsRead(notification._id); }}
+                                    disabled={markingId === notification._id}
+                                  >
+                                    {markingId === notification._id ? (
+                                      <span className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin block" />
+                                    ) : (
+                                      <Check className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-gray-600 dark:text-gray-300 mt-1">
+                              {notification.message}
+                              {notification.post && notification.post.title && (
+                                <span className="ml-1 text-blue-600 dark:text-blue-400 font-medium">"{notification.post.title}"</span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      </SpotlightCard>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {notifications.length > 0 && (
+              <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+                <Button
+                  variant="outline"
+                  className="w-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                  onClick={() => {
+                    if (Array.isArray(notifications)) {
+                      notifications.forEach(n => !n.read && markAsRead(n._id));
+                    }
+                  }}
+                >
+                  <Check className="w-4 h-4 mr-2" />
+                  Tümünü Okundu İşaretle
+                </Button>
               </div>
             )}
           </div>
-
-          {/* Footer */}
-          {notifications.length > 0 && (
-            <div className="px-6 pt-4 border-t border-gray-100">
-              <Link
-                href="/notifications"
-                className="block text-center text-sm text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
-                onClick={() => setIsOpen(false)}
-              >
-                Tüm bildirimleri görüntüle
-              </Link>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+        </SpotlightCard>
+      </SheetContent>
+    </Sheet>
   );
 } 

@@ -3,290 +3,363 @@ import { authOptions } from './api/auth/[...nextauth]/route';
 import Link from 'next/link';
 import connectDB from '@/lib/mongodb';
 import Post from '@/models/Post';
-import LikeButton from '@/components/LikeButton';
+import User from '@/models/User';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import TrendingWidget from '@/components/TrendingWidget';
+import Squares from '@/components/Squares';
+import SpotlightCard from '@/components/SpotlightCard';
+import { 
+  Plus, 
+  Users, 
+  FileText, 
+  Eye, 
+  TrendingUp, 
+  Star,
+  Calendar,
+  Heart,
+  ArrowRight,
+  Sparkles,
+  Clock,
+  ExternalLink,
+  MessageSquare,
+  Zap
+} from 'lucide-react';
 
-export default async function Home() {
-  try {
-    const session = await getServerSession(authOptions);
-    await connectDB();
+interface PostData {
+  _id: string;
+  title: string;
+  content: string;
+  category: string;
+  slug: string;
+  author: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  createdAt: string;
+  views: number;
+  likesCount: number;
+}
 
-    const posts = await Post.find()
-      .populate('author', 'name email')
-      .populate('comments.author', 'name email')
-      .sort({ createdAt: -1 })
-      .lean();
+const features = [
+  {
+    icon: <FileText className="w-5 h-5" />,
+    title: 'İçerik Paylaşımı',
+    description: 'Düşüncelerinizi, deneyimlerinizi ve bilgilerinizi paylaşın.',
+    color: 'from-blue-600 to-cyan-600',
+  },
+  {
+    icon: <MessageSquare className="w-5 h-5" />,
+    title: 'Etkileşim',
+    description: 'Tartışmalara katılın, yorum yapın ve geri bildirim alın.',
+    color: 'from-purple-600 to-pink-600',
+  },
+  {
+    icon: <Users className="w-5 h-5" />,
+    title: 'Topluluk',
+    description: 'Benzer ilgi alanlarına sahip kişilerle bağlantı kurun.',
+    color: 'from-orange-600 to-red-600',
+  },
+  {
+    icon: <Zap className="w-5 h-5" />,
+    title: 'Seviye Sistemi',
+    description: 'Katkılarınızla seviye atlayın ve rozetler kazanın.',
+    color: 'from-green-600 to-emerald-600',
+  },
+];
 
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-        {/* Hero Section */}
-        <div className="relative overflow-hidden">
-          {/* Gradient Background */}
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-purple-600/10"></div>
-          
-          {/* Decorative Elements */}
-          <div className="absolute top-0 left-0 w-72 h-72 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
-          <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-tl from-purple-400/20 to-pink-400/20 rounded-full blur-3xl translate-x-1/2 translate-y-1/2"></div>
-          
-          <div className="relative container mx-auto px-4 py-20">
-            <div className="max-w-4xl mx-auto text-center fade-in">
-              <div className="mb-6">
-                <span className="inline-block px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium mb-4">
-                  🚀 Yeni Nesil Forum Deneyimi
-                </span>
-              </div>
-              
-              <h1 className="text-5xl md:text-7xl font-bold mb-6">
-                <span className="gradient-text">ForumHub</span>'a 
-                <br />
-                <span className="text-gray-800">Hoş Geldiniz</span>
-              </h1>
-              
-              <p className="text-xl md:text-2xl text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed">
-                💭 Düşüncelerinizi paylaşın, 🗣️ tartışın ve ✨ yeni fikirler keşfedin. 
-                Topluluk ile birlikte büyüyen bir platform.
-              </p>
-              
-              {!session ? (
-                <div className="flex flex-col sm:flex-row justify-center gap-6 slide-up">
-                  <Link
-                    href="/register"
-                    className="group bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105 font-semibold text-lg btn-hover"
-                  >
-                    🎯 Hemen Başla
-                  </Link>
-                  <Link
-                    href="/login"
-                    className="group bg-white/80 backdrop-blur-sm text-gray-800 border-2 border-gray-200 px-8 py-4 rounded-2xl hover:bg-white hover:border-blue-300 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold text-lg"
-                  >
-                    🔑 Giriş Yap
-                  </Link>
-                </div>
-              ) : (
-                <div className="slide-up">
-                  <Link
-                    href="/post/create"
-                    className="inline-flex items-center gap-3 bg-gradient-to-r from-green-500 to-blue-600 text-white px-10 py-5 rounded-2xl hover:from-green-600 hover:to-blue-700 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105 font-semibold text-xl btn-hover"
-                  >
-                    ✍️ Yeni Gönderi Oluştur
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
+export default async function HomePage() {
+  await connectDB();
+
+  // Son gönderileri getir
+  const posts = await Post.find()
+    .populate('author', 'name email')
+    .sort({ createdAt: -1 })
+    .limit(6)
+    .lean();
+
+  // İstatistikleri getir
+  const [totalPosts, totalUsers] = await Promise.all([
+    Post.countDocuments(),
+    User.countDocuments()
+  ]);
+
+  // Kategorileri ve post sayılarını getir
+  const categoryStats = await Post.aggregate([
+    {
+      $group: {
+        _id: '$category',
+        count: { $sum: 1 }
+      }
+    },
+    {
+      $sort: { count: -1 }
+    }
+  ]);
+
+  const categories = categoryStats.map(stat => ({
+    name: stat._id,
+    count: stat.count
+  }));
+
+  // Convert ObjectId to string
+  const serializedPosts: PostData[] = posts.map((post: any) => ({
+    _id: post._id.toString(),
+    title: post.title,
+    content: post.content,
+    category: post.category,
+    slug: post.slug,
+    author: {
+      _id: post.author._id.toString(),
+      name: post.author.name,
+      email: post.author.email,
+    },
+    createdAt: post.createdAt?.toISOString() || new Date().toISOString(),
+    views: post.views || 0,
+    likesCount: post.likes?.length || 0,
+  }));
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('tr-TR', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  const calculateReadingTime = (content: string) => {
+    const wordsPerMinute = 200;
+    const wordCount = content.split(' ').length;
+    const readingTime = Math.ceil(wordCount / wordsPerMinute);
+    return readingTime;
+  };
+
+  return (
+    <div className="space-y-16">
+      {/* Hero Section */}
+      <section className="relative py-20 overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute -top-48 left-0 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+          <div className="absolute -top-48 right-0 w-96 h-96 bg-yellow-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+          <div className="absolute -bottom-48 left-0 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+          <div className="absolute -bottom-48 right-0 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
         </div>
 
-        {/* Stats Section */}
-        <div className="py-16 bg-white/50 backdrop-blur-sm">
-          <div className="container mx-auto px-4">
-            <div className="max-w-4xl mx-auto">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="text-center p-6 glass rounded-2xl card-shadow">
-                  <div className="text-4xl mb-4">👥</div>
-                  <div className="text-3xl font-bold text-gray-800 mb-2">1000+</div>
-                  <div className="text-gray-600">Aktif Üye</div>
-                </div>
-                <div className="text-center p-6 glass rounded-2xl card-shadow">
-                  <div className="text-4xl mb-4">📝</div>
-                  <div className="text-3xl font-bold text-gray-800 mb-2">{posts.length}</div>
-                  <div className="text-gray-600">Gönderi</div>
-                </div>
-                <div className="text-center p-6 glass rounded-2xl card-shadow">
-                  <div className="text-4xl mb-4">💬</div>
-                  <div className="text-3xl font-bold text-gray-800 mb-2">
-                    {posts.reduce((total: number, post: any) => total + (post.comments?.length || 0), 0)}
-                  </div>
-                  <div className="text-gray-600">Yorum</div>
-                </div>
-              </div>
-              
-              {/* Beğeni İstatistikleri */}
-              <div className="mt-8">
-                <div className="text-center p-6 glass rounded-2xl card-shadow">
-                  <div className="text-4xl mb-4 heart-beat">❤️</div>
-                  <div className="text-3xl font-bold text-pink-600 mb-2">
-                    {posts.reduce((total: number, post: any) => total + (post.likes?.length || 0), 0)}
-                  </div>
-                  <div className="text-gray-600">Toplam Beğeni</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Posts Section */}
-        <div className="container mx-auto px-4 py-16">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold text-gray-800 mb-4">
-                🔥 En Son Gönderiler
-              </h2>
-              <p className="text-xl text-gray-600">
-                Topluluğumuzun en güncel paylaşımlarını keşfedin
-              </p>
-            </div>
-            
-            {posts.length === 0 ? (
-              <div className="text-center py-20 glass rounded-3xl card-shadow fade-in">
-                <div className="text-6xl mb-6">📝</div>
-                <h3 className="text-2xl font-bold text-gray-800 mb-4">
-                  Henüz hiç gönderi yok
-                </h3>
-                <p className="text-gray-600 mb-8 text-lg">
-                  İlk gönderiyi paylaşan siz olun! 🚀
-                </p>
-                {session ? (
-                  <Link
-                    href="/post/create"
-                    className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold btn-hover"
-                  >
-                    ✍️ İlk Gönderiyi Oluştur
-                  </Link>
-                ) : (
-                  <div className="space-x-4">
-                    <Link 
-                      href="/login" 
-                      className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-all duration-300 font-semibold"
-                    >
-                      🔑 Giriş Yap
-                    </Link>
-                    <Link 
-                      href="/register" 
-                      className="inline-flex items-center gap-2 bg-gradient-to-r from-green-500 to-blue-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-blue-700 transition-all duration-300 font-semibold"
-                    >
-                      🎯 Kayıt Ol
-                    </Link>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {posts.map((post: any, index: number) => (
-                  <article
-                    key={post._id.toString()}
-                    className="group glass rounded-3xl card-shadow p-8 hover:scale-105 transition-all duration-300 fade-in"
-                    style={{ animationDelay: `${index * 0.1}s` }}
-                  >
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center space-x-3">
-                        <Link href={`/user/${post.author?._id}`} className="cursor-pointer">
-                          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold hover:scale-110 transition-transform duration-200">
-                            {post.author?.name?.charAt(0)?.toUpperCase() || '👤'}
-                          </div>
-                        </Link>
-                        <div>
-                          <Link 
-                            href={`/user/${post.author?._id}`} 
-                            className="font-medium text-gray-800 hover:text-blue-600 transition-colors cursor-pointer"
-                          >
-                            {post.author?.name || 'Anonim'}
-                          </Link>
-                          <div className="text-sm text-gray-500">
-                            📅 {new Date(post.createdAt).toLocaleDateString('tr-TR', {
-                              day: 'numeric',
-                              month: 'long',
-                              year: 'numeric'
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                      <span className="px-4 py-2 bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 text-sm rounded-full font-medium">
-                        🏷️ {post.category}
-                      </span>
-                    </div>
-                    
-                    <Link href={`/post/${post.slug}`} className="block">
-                      <h3 className="text-2xl font-bold text-gray-800 mb-4 group-hover:text-blue-600 transition-colors duration-300 line-clamp-2">
-                        {post.title}
-                      </h3>
-                    </Link>
-                    
-                    <p className="text-gray-600 line-clamp-3 mb-6 text-lg leading-relaxed">
-                      {post.content}
-                    </p>
-
-                    {/* Post Stats */}
-                    <div className="flex items-center justify-between text-sm text-gray-500 mb-6">
-                      <div className="flex items-center gap-4">
-                        <span className="flex items-center gap-1">
-                          📊 {post.content.length} karakter
-                        </span>
-                        <span className="flex items-center gap-1">
-                          💬 {post.comments?.length || 0} yorum
-                        </span>
-                        <span className="flex items-center gap-1">
-                          ❤️ {post.likes?.length || 0} beğeni
-                        </span>
-                      </div>
-                      <span className="flex items-center gap-1">
-                        👁️ 0 görüntülenme
-                      </span>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex items-center justify-between">
-                      <LikeButton 
-                        postId={post._id.toString()} 
-                        initialLikesCount={post.likes?.length || 0}
-                        size="sm"
-                      />
-                      
-                      <Link
-                        href={`/post/${post.slug}`}
-                        className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold group-hover:gap-3 transition-all duration-300"
-                      >
-                        📖 Devamını Oku
-                        <span className="group-hover:translate-x-1 transition-transform duration-300">→</span>
-                      </Link>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Call to Action Section */}
-        {!session && (
-          <div className="py-20 bg-gradient-to-r from-blue-600 to-purple-600">
-            <div className="container mx-auto px-4 text-center">
-              <h2 className="text-4xl font-bold text-white mb-6">
-                🚀 Hemen Katılın!
-              </h2>
-              <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-                Binlerce kullanıcının oluşturduğu muhteşem topluluğa katılın ve 
-                fikirlerinizi dünya ile paylaşın.
-              </p>
-              <Link
-                href="/register"
-                className="inline-flex items-center gap-3 bg-white text-blue-600 px-10 py-5 rounded-2xl hover:bg-blue-50 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105 font-bold text-xl"
-              >
-                🎯 Ücretsiz Kayıt Ol
+        <div className="max-w-4xl mx-auto text-center">
+          <Badge className="mb-8 px-4 py-2 text-sm bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-full">
+            ✨ Modern Blog & Forum Platformu
+          </Badge>
+          <h1 className="mb-8 text-4xl sm:text-5xl md:text-6xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 dark:from-white dark:via-gray-200 dark:to-white bg-clip-text text-transparent">
+            Düşüncelerinizi Paylaşın, Toplulukla Büyüyün
+          </h1>
+          <p className="mb-12 text-lg sm:text-xl text-gray-600 dark:text-gray-400">
+            BlogForum, modern ve interaktif bir platform sunarak fikirlerinizi paylaşmanızı, 
+            tartışmalara katılmanızı ve toplulukla etkileşime geçmenizi sağlar.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Button size="lg" asChild className="w-full sm:w-auto">
+              <Link href="/register" className="gap-2">
+                Hemen Başla
+                <ArrowRight className="w-4 h-4" />
               </Link>
+            </Button>
+            <Button size="lg" variant="outline" asChild className="w-full sm:w-auto">
+              <Link href="/explore">Keşfet</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-16">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold mb-4">
+            Platform Özellikleri
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            BlogForum'un sunduğu özelliklerle düşüncelerinizi paylaşın ve toplulukla etkileşime geçin.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {features.map((feature, index) => (
+            <SpotlightCard key={index}>
+              <div className="p-6">
+                <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${feature.color} flex items-center justify-center mb-4`}>
+                  <div className="text-white">
+                    {feature.icon}
+                  </div>
+                </div>
+                <h3 className="text-lg font-semibold mb-2">
+                  {feature.title}
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  {feature.description}
+                </p>
+              </div>
+            </SpotlightCard>
+          ))}
+        </div>
+      </section>
+
+      {/* Categories Section */}
+      <section className="py-16">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold mb-4">
+            Kategoriler
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            İlgi alanlarınıza göre içerikleri keşfedin.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-3">
+          {categories.map((category, index) => (
+            <Link key={index} href={`/category/${encodeURIComponent(category.name)}`}>
+              <Badge
+                variant="outline"
+                className="px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors duration-200 flex items-center gap-2"
+              >
+                {category.name}
+                <span className="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full">
+                  {category.count}
+                </span>
+              </Badge>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* Recent Posts Section */}
+      <section className="py-16">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold mb-4">
+            Son İçerikler
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Topluluğun en yeni paylaşımları.
+          </p>
+        </div>
+
+        {serializedPosts.length === 0 ? (
+          <SpotlightCard className="text-center py-12">
+            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FileText className="w-8 h-8 text-gray-400" />
             </div>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              Henüz içerik yok
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400">
+              İlk içeriği siz oluşturun ve topluluğa katkıda bulunun!
+            </p>
+          </SpotlightCard>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {serializedPosts.map((post, index) => (
+              <SpotlightCard key={post._id} className="group/post h-full">
+                <div className="p-6 flex flex-col h-full">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                      {post.category}
+                    </Badge>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      {formatDate(post.createdAt)}
+                    </span>
+                  </div>
+                  
+                  <Link href={`/post/${post.slug}`} className="block flex-1">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover/post:text-blue-600 dark:group-hover/post:text-blue-400 mb-3 transition-colors duration-200 line-clamp-2">
+                      {post.title}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4 line-clamp-3">
+                      {post.content.replace(/<[^>]*>/g, '').substring(0, 150)}...
+                    </p>
+                  </Link>
+                  
+                  <div className="space-y-4 mt-auto">
+                    <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                      <div className="flex items-center gap-1">
+                        <Eye className="w-4 h-4" />
+                        {post.views}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Heart className="w-4 h-4" />
+                        {post.likesCount}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        {calculateReadingTime(post.content)} dk
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-8 h-8">
+                          <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm">
+                            {post.author.name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {post.author.name}
+                        </span>
+                      </div>
+                      
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/post/${post.slug}`}>
+                          Oku
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </SpotlightCard>
+            ))}
           </div>
         )}
-      </div>
-    );
-  } catch (error) {
-    console.error('Error:', error);
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center">
-        <div className="text-center glass rounded-3xl p-12 card-shadow">
-          <div className="text-6xl mb-6">⚠️</div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-6">
-            Bir hata oluştu
-          </h1>
-          <p className="text-gray-600 text-lg mb-8">
-            Lütfen daha sonra tekrar deneyin veya sayfayı yenileyin.
-          </p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl font-semibold"
-          >
-            🔄 Sayfayı Yenile
-          </button>
+
+        <div className="text-center mt-12">
+          <Button asChild variant="outline" size="lg" className="group">
+            <Link href="/explore" className="flex items-center gap-2">
+              Tüm İçerikleri Keşfet
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
+            </Link>
+          </Button>
         </div>
-      </div>
-    );
-  }
+      </section>
+
+      {/* Trending Widget */}
+      <section className="py-16">
+        <TrendingWidget />
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-16">
+        <SpotlightCard>
+          <div className="p-12 text-center">
+            <h2 className="text-3xl font-bold mb-4">
+              Topluluğa Katılın
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
+              Siz de BlogForum ailesine katılın, düşüncelerinizi paylaşın ve toplulukla etkileşime geçin.
+              Hemen ücretsiz hesap oluşturun ve içerik paylaşmaya başlayın.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Button size="lg" asChild>
+                <Link href="/register">Üye Ol</Link>
+              </Button>
+              <Button size="lg" variant="outline" asChild>
+                <Link href="/login">Giriş Yap</Link>
+              </Button>
+            </div>
+          </div>
+        </SpotlightCard>
+      </section>
+    </div>
+  );
 }

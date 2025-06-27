@@ -4,6 +4,21 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import LikeButton from './LikeButton';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { 
+  Eye, 
+  MessageCircle, 
+  Heart, 
+  Edit3, 
+  Trash2, 
+  ExternalLink,
+  Calendar,
+  User,
+  Loader2
+} from 'lucide-react';
 
 interface Post {
   _id: string;
@@ -44,10 +59,7 @@ export default function ProfileClient({ posts: initialPosts }: ProfileClientProp
         throw new Error('Gönderi silinirken bir hata oluştu');
       }
 
-      // Remove the post from the state
       setPosts(posts.filter(post => post._id !== postId));
-      
-      // Show success message
       alert('Gönderi başarıyla silindi! ✅');
     } catch (error) {
       console.error('Delete error:', error);
@@ -57,116 +69,136 @@ export default function ProfileClient({ posts: initialPosts }: ProfileClientProp
     }
   };
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('tr-TR', {
+      day: 'numeric',
+      month: 'short'
+    });
+  };
+
+  const truncateContent = (content: string, maxLength: number = 80) => {
+    if (content.length <= maxLength) return content;
+    return content.substring(0, maxLength) + '...';
+  };
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
       {posts.map((post, index) => (
-        <article
-          key={post._id}
-          className="group glass rounded-3xl card-shadow p-6 hover:scale-105 transition-all duration-300 fade-in"
-          style={{ animationDelay: `${index * 0.1}s` }}
+        <Card 
+          key={post._id} 
+          className="group glass card-shadow border-gray-200 hover:shadow-md transition-all duration-300 fade-in bg-white/95" 
+          style={{ animationDelay: `${index * 0.05}s` }}
         >
-          {/* Post Header */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                {post.author.name?.charAt(0)?.toUpperCase() || '👤'}
-              </div>
-              <div>
-                <span className="font-medium text-gray-800 text-sm">
-                  {post.author.name}
-                </span>
-                <div className="text-xs text-gray-500">
-                  📅 {new Date(post.createdAt).toLocaleDateString('tr-TR', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
+          <CardContent className="p-3 space-y-2">
+            {/* Kompakt Header */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <Avatar className="w-6 h-6 flex-shrink-0">
+                  <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-semibold">
+                    {post.author.name?.charAt(0)?.toUpperCase() || <User className="w-2 h-2" />}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <span className="font-medium truncate">{post.author.name}</span>
+                    <span>•</span>
+                    <Calendar className="w-3 h-3 flex-shrink-0" />
+                    <span className="flex-shrink-0">{formatDate(post.createdAt)}</span>
+                  </div>
                 </div>
               </div>
+              <Badge variant="secondary" className="text-xs bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 border-0 px-2 py-0.5 flex-shrink-0">
+                {post.category}
+              </Badge>
             </div>
-            <span className="px-3 py-1 bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 text-xs rounded-full font-medium">
-              🏷️ {post.category}
-            </span>
-          </div>
 
-          {/* Post Content */}
-          <Link href={`/post/${post.slug}`} className="block cursor-pointer">
-            <h3 className="text-xl font-bold text-gray-800 mb-3 group-hover:text-blue-600 transition-colors duration-300 line-clamp-2">
-              {post.title}
-            </h3>
-          </Link>
-          
-          <p className="text-gray-600 line-clamp-3 mb-4 text-sm leading-relaxed">
-            {post.content}
-          </p>
+            {/* Title - Clickable */}
+            <Link href={`/post/${post.slug}`} className="block">
+              <h3 className="text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200 line-clamp-2 cursor-pointer mb-1">
+                {post.title}
+              </h3>
+            </Link>
 
-          {/* Post Stats */}
-          <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1">
-                📊 {post.content.length} karakter
-              </span>
-              <span className="flex items-center gap-1">
-                👁️ 0 görüntülenme
-              </span>
-              <span className="flex items-center gap-1">
-                💬 0 yorum
+            {/* Kompakt Content Preview */}
+            <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+              {truncateContent(post.content)}
+            </p>
+
+            {/* Kompakt Stats */}
+            <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1">
+                  <Eye className="w-3 h-3" />
+                  <span>0</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <MessageCircle className="w-3 h-3" />
+                  <span>0</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Heart className="w-3 h-3" />
+                  <span>0</span>
+                </div>
+              </div>
+              <span className="text-gray-400 hidden sm:inline text-xs">
+                {Math.ceil(post.content.length / 100)} dk
               </span>
             </div>
-            <span className="flex items-center gap-1">
-              ❤️ 0 beğeni
-            </span>
-          </div>
 
-          {/* Action Buttons */}
-          <div className="space-y-3 pt-4 border-t border-gray-100">
-            {/* Like Button */}
-            <div className="flex justify-center">
+            {/* Kompakt Like Section */}
+            <div className="flex justify-center py-1">
               <LikeButton 
                 postId={post._id} 
                 size="sm"
                 showCount={true}
               />
             </div>
-            
-            {/* Management Buttons */}
-            <div className="flex items-center justify-between gap-3">
-              <Link
-                href={`/post/${post.slug}`}
-                className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors duration-200 cursor-pointer"
+
+            {/* Kompakt Action Buttons */}
+            <div className="flex items-center gap-1">
+              <Button 
+                asChild 
+                variant="outline" 
+                size="sm" 
+                className="flex-1 gap-1 text-xs h-7 btn-hover border-blue-200 text-blue-700 hover:bg-blue-50"
               >
-                📖 Görüntüle
-              </Link>
-              
-              <div className="flex items-center gap-2">
-                <Link
-                  href={`/post/${post.slug}/edit`}
-                  className="flex items-center gap-1 bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200 cursor-pointer"
-                >
-                  ✏️ Düzenle
+                <Link href={`/post/${post.slug}`}>
+                  <ExternalLink className="w-3 h-3" />
+                  <span className="hidden xs:inline">Görüntüle</span>
+                  <span className="xs:hidden">Gör</span>
                 </Link>
-                <button
-                  onClick={() => handleDelete(post._id, post.title)}
-                  disabled={deletingId === post._id}
-                  className="flex items-center gap-1 bg-red-100 text-red-700 hover:bg-red-200 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {deletingId === post._id ? (
-                    <>
-                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-700"></div>
-                      Siliniyor...
-                    </>
-                  ) : (
-                    <>
-                      🗑️ Sil
-                    </>
-                  )}
-                </button>
-              </div>
+              </Button>
+              
+              <Button 
+                asChild 
+                variant="outline" 
+                size="sm" 
+                className="gap-1 text-xs h-7 btn-hover border-green-200 text-green-700 hover:bg-green-50"
+              >
+                <Link href={`/post/${post.slug}/edit`}>
+                  <Edit3 className="w-3 h-3" />
+                  <span className="hidden xs:inline">Düzenle</span>
+                  <span className="xs:hidden">Düz</span>
+                </Link>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDelete(post._id, post.title)}
+                disabled={deletingId === post._id}
+                className="gap-1 text-xs h-7 btn-hover border-red-200 text-red-600 hover:text-red-700 hover:bg-red-50 px-2"
+              >
+                {deletingId === post._id ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Trash2 className="w-3 h-3" />
+                )}
+                <span className="sr-only">Sil</span>
+              </Button>
             </div>
-          </div>
-        </article>
+          </CardContent>
+        </Card>
       ))}
     </div>
   );

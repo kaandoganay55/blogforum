@@ -54,13 +54,13 @@ export default function CreatePostPage() {
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center py-12">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center py-12">
         <div className="glass rounded-3xl card-shadow p-12 text-center max-w-md w-full mx-4">
           <div className="text-6xl mb-6">🔒</div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-4">
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-4">
             Giriş Yapmanız Gerekiyor
           </h1>
-          <p className="text-gray-600 mb-8 text-lg">
+          <p className="text-gray-600 dark:text-gray-300 mb-8 text-lg">
             Gönderi oluşturmak için lütfen giriş yapın.
           </p>
           <Link
@@ -75,11 +75,11 @@ export default function CreatePostPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* Background Decorations */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-0 left-0 w-72 h-72 bg-gradient-to-br from-green-400/10 to-blue-400/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-tl from-blue-400/10 to-purple-400/10 rounded-full blur-3xl translate-x-1/2 translate-y-1/2"></div>
+        <div className="absolute top-0 left-0 w-72 h-72 bg-gradient-to-br from-green-400/10 to-blue-400/10 dark:from-green-400/5 dark:to-blue-400/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-tl from-blue-400/10 to-purple-400/10 dark:from-blue-400/5 dark:to-purple-400/5 rounded-full blur-3xl translate-x-1/2 translate-y-1/2"></div>
       </div>
 
       <div className="relative container mx-auto px-4 py-12">
@@ -89,17 +89,17 @@ export default function CreatePostPage() {
             <div className="inline-block p-4 bg-gradient-to-r from-green-500 to-blue-600 rounded-3xl shadow-2xl mb-6">
               <span className="text-4xl">✍️</span>
             </div>
-            <h1 className="text-5xl font-bold text-gray-800 mb-4">
+            <h1 className="text-5xl font-bold text-gray-800 dark:text-white mb-4">
               Yeni Gönderi Oluştur
             </h1>
-            <p className="text-xl text-gray-600">
+            <p className="text-xl text-gray-600 dark:text-gray-300">
               Fikirlerinizi toplulukla paylaşın ve tartışma başlatın! 🚀
             </p>
           </div>
 
           <div className="glass rounded-3xl card-shadow p-8 slide-up">
             {error && (
-              <div className="bg-red-50 border-2 border-red-200 text-red-800 px-6 py-4 rounded-2xl mb-8 text-center font-medium">
+              <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 px-6 py-4 rounded-2xl mb-8 text-center font-medium">
                 ⚠️ {error}
               </div>
             )}
@@ -107,7 +107,7 @@ export default function CreatePostPage() {
             <form onSubmit={handleSubmit} className="space-y-8">
               {/* Title Input */}
               <div>
-                <label htmlFor="title" className="block text-lg font-semibold text-gray-800 mb-3">
+                <label htmlFor="title" className="block text-lg font-semibold text-gray-800 dark:text-white mb-3">
                   📝 Başlık
                 </label>
                 <input
@@ -116,14 +116,14 @@ export default function CreatePostPage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   required
-                  className="form-input w-full px-6 py-4 border-2 border-gray-200 rounded-2xl focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-300 text-gray-800 placeholder-gray-400 text-lg"
+                  className="form-input w-full px-6 py-4 border-2 border-gray-200 dark:border-gray-600 rounded-2xl focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-300 text-gray-800 dark:text-white bg-white dark:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-500 text-lg"
                   placeholder="Gönderi başlığınızı yazın..."
                 />
               </div>
 
               {/* Category Select */}
               <div>
-                <label htmlFor="category" className="block text-lg font-semibold text-gray-800 mb-3">
+                <label htmlFor="category" className="block text-lg font-semibold text-gray-800 dark:text-white mb-3">
                   🏷️ Kategori
                 </label>
                 <select
@@ -131,7 +131,7 @@ export default function CreatePostPage() {
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   required
-                  className="form-input w-full px-6 py-4 border-2 border-gray-200 rounded-2xl focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-300 text-gray-800 text-lg cursor-pointer"
+                  className="form-input w-full px-6 py-4 border-2 border-gray-200 dark:border-gray-600 rounded-2xl focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-300 text-gray-800 dark:text-white bg-white dark:bg-gray-800 text-lg cursor-pointer"
                 >
                   <option value="">Kategori seçin...</option>
                   {CATEGORIES.map((cat) => (
@@ -144,7 +144,7 @@ export default function CreatePostPage() {
 
               {/* Content Textarea */}
               <div>
-                <label htmlFor="content" className="block text-lg font-semibold text-gray-800 mb-3">
+                <label htmlFor="content" className="block text-lg font-semibold text-gray-800 dark:text-white mb-3">
                   📄 İçerik
                 </label>
                 <textarea
@@ -153,19 +153,19 @@ export default function CreatePostPage() {
                   onChange={(e) => setContent(e.target.value)}
                   required
                   rows={12}
-                  className="form-input w-full px-6 py-4 border-2 border-gray-200 rounded-2xl focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-300 text-gray-800 placeholder-gray-400 text-lg resize-none"
+                  className="form-input w-full px-6 py-4 border-2 border-gray-200 dark:border-gray-600 rounded-2xl focus:border-green-500 focus:ring-4 focus:ring-green-500/20 transition-all duration-300 text-gray-800 dark:text-white bg-white dark:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-500 text-lg resize-none"
                   placeholder="Gönderi içeriğinizi detaylı bir şekilde yazın..."
                 />
-                <div className="mt-2 text-sm text-gray-500">
+                <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                   💡 Karakter sayısı: {content.length}
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t border-gray-200">
+              <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t border-gray-200 dark:border-gray-700">
                 <Link
                   href="/"
-                  className="inline-flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-8 py-4 rounded-2xl hover:bg-gray-200 transition-all duration-300 shadow-lg hover:shadow-xl font-semibold cursor-pointer"
+                  className="inline-flex items-center justify-center gap-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-8 py-4 rounded-2xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-300 shadow-lg hover:shadow-xl font-semibold cursor-pointer"
                 >
                   ❌ İptal
                 </Link>
@@ -189,25 +189,25 @@ export default function CreatePostPage() {
             </form>
 
             {/* Tips Section */}
-            <div className="mt-12 p-6 bg-blue-50 rounded-2xl border border-blue-200">
-              <h3 className="text-lg font-semibold text-blue-800 mb-4">
+            <div className="mt-12 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-200 dark:border-blue-800">
+              <h3 className="text-lg font-semibold text-blue-800 dark:text-blue-300 mb-4">
                 💡 İpuçları
               </h3>
-              <ul className="space-y-2 text-blue-700">
+              <ul className="space-y-2 text-blue-700 dark:text-blue-300">
                 <li className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                  <span className="w-2 h-2 bg-blue-500 dark:bg-blue-400 rounded-full"></span>
                   Başlığınızı açık ve dikkat çekici yazın
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                  <span className="w-2 h-2 bg-blue-500 dark:bg-blue-400 rounded-full"></span>
                   İçeriğinizi detaylı ve anlaşılır bir şekilde açıklayın
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                  <span className="w-2 h-2 bg-blue-500 dark:bg-blue-400 rounded-full"></span>
                   Doğru kategoriyi seçerek hedef kitleye ulaşın
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                  <span className="w-2 h-2 bg-blue-500 dark:bg-blue-400 rounded-full"></span>
                   Saygılı ve yapıcı bir dil kullanın
                 </li>
               </ul>
